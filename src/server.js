@@ -52,6 +52,14 @@ app.use((error, req, res, next) => {
     return;
   }
 
+  if (['ECONNREFUSED', 'ER_ACCESS_DENIED_ERROR', 'ER_BAD_DB_ERROR'].includes(error.code)) {
+    res.status(503).json({
+      error: 'Database connection failed. Check that MySQL is running and .env is configured.',
+      code: error.code
+    });
+    return;
+  }
+
   if (error.code === 'ER_DUP_ENTRY') {
     res.status(409).json({
       error: 'A record with the same unique value already exists.',
@@ -83,4 +91,3 @@ app.use((error, req, res, next) => {
 app.listen(config.port, () => {
   console.log(`Warehouse inventory app running on http://localhost:${config.port}`);
 });
-
