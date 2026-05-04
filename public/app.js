@@ -178,33 +178,104 @@ function renderReferenceSelects() {
   renderSelect(activeUserSelect, state.reference.users, 'user_id', 'full_name', 'Select user', activeUserSelect.value || '1');
 }
 
-function renderKpis(summary) {
+function meterPercent(value, max = 10) {
+  if (!value) {
+    return 12;
+  }
+
+  return Math.max(12, Math.min(100, Math.round((value / max) * 100)));
+}
+
+function renderSideRail(summary = {}) {
+  $('#sideInbound').textContent = number.format(summary.open_purchase_orders || 0);
+  $('#sideOutbound').textContent = number.format(summary.open_sales_orders || 0);
+  $('#sideAlerts').textContent = number.format(summary.low_stock_count || 0);
+}
+
+function renderKpis(summary = {}, isOffline = false) {
   const items = [
-    ['Active Products', number.format(summary.active_products || 0), 'SKUs ready for warehouse use'],
-    ['Stock Units', number.format(summary.total_units || 0), 'Quantity currently on hand'],
-    ['Inventory Value', currency.format(summary.inventory_value || 0), 'Based on unit sale price'],
-    ['Low Stock', number.format(summary.low_stock_count || 0), `${number.format(summary.open_purchase_orders || 0)} open purchase orders`],
-    ['Suppliers', number.format(summary.active_suppliers || 0), 'Active vendor records'],
-    ['Sales Pending', number.format(summary.open_sales_orders || 0), 'Outbound orders waiting'],
-    ['Purchase Pending', number.format(summary.open_purchase_orders || 0), 'Inbound orders waiting'],
-    ['System Status', 'Live', 'Connected to MySQL schema']
+    { label: 'Active Products', value: number.format(summary.active_products || 0), meta: 'SKU catalog', icon: 'PR', tone: 'green' },
+    { label: 'Stock Units', value: number.format(summary.total_units || 0), meta: 'On hand', icon: 'ST', tone: 'blue' },
+    { label: 'Inventory Value', value: currency.format(summary.inventory_value || 0), meta: 'Sale value', icon: 'PK', tone: 'purple' },
+    { label: 'Low Stock', value: number.format(summary.low_stock_count || 0), meta: 'Reorder alerts', icon: 'LW', tone: 'red' },
+    { label: 'Suppliers', value: number.format(summary.active_suppliers || 0), meta: 'Active vendors', icon: 'SP', tone: 'amber' },
+    { label: 'Sales Pending', value: number.format(summary.open_sales_orders || 0), meta: 'Outbound queue', icon: 'SO', tone: 'blue' },
+    { label: 'Purchase Pending', value: number.format(summary.open_purchase_orders || 0), meta: 'Inbound queue', icon: 'PO', tone: 'amber' },
+    { label: 'System Status', value: isOffline ? 'Offline' : 'Live', meta: isOffline ? 'MySQL unavailable' : 'MySQL connected', icon: isOffline ? 'DB' : 'OK', tone: isOffline ? 'red' : 'green' }
   ];
 
-  $('#kpiGrid').innerHTML = items.map(([label, value, meta]) => `
-    <article class="kpi-card">
-      <div class="kpi-label">${escapeHtml(label)}</div>
-      <div class="kpi-value">${escapeHtml(value)}</div>
-      <div class="kpi-meta">${escapeHtml(meta)}</div>
+  $('#kpiGrid').innerHTML = items.map((item) => `
+    <article class="kpi-card" data-tone="${escapeHtml(item.tone)}">
+      <div class="kpi-top">
+        <div class="kpi-label">${escapeHtml(item.label)}</div>
+        <div class="kpi-icon">${escapeHtml(item.icon)}</div>
+      </div>
+      <div class="kpi-spark"><span></span><span></span><span></span><span></span><span></span></div>
+      <div class="kpi-value">${escapeHtml(item.value)}</div>
+      <div class="kpi-meta">${escapeHtml(item.meta)}</div>
     </article>
   `).join('');
 }
 
-function renderDashboard(data) {
-  renderKpis(data.summary || {});
+function renderOpsStrip(summary = {}, isOffline = false) {
+  const max = Math.max(
+    summary.open_purchase_orders || 0,
+    summary.open_sales_orders || 0,
+    summary.low_stock_count || 0,
+    10
+  );
+  const items = [
+    { label: 'Receiving Load', value: summary.open_purchase_orders || 0, tone: 'amber' },
+    { label: 'Fulfillment Load', value: summary.open_sales_orders || 0, tone: 'blue' },
+    { label: 'Stock Risk', value: summary.low_stock_count || 0, tone: 'red' },
+    { label: 'Supplier Base', value: summary.active_suppliers || 0, tone: 'green' }
+  ];
 
-  $('#lowStockCount').textContent = `${data.lowStock.length} items`;
-  $('#dashboardLowStockRows').innerHTML = data.lowStock.length
-    ? data.lowStock.map((item) => `
+  $('#opsStrip').innerHTML = items.map((item) => `
+    <article class="ops-item" data-tone="${escapeHtml(item.tone)}">
+      <header>
+        <span class="ops-label">${escapeHtml(item.label)}</span>
+        <strong>${number.format(item.value)}</strong>
+      </header>
+      <div class="ops-meter" style="--meter:${isOffline ? 12 : meterPercent(item.value, max)}%"><span></span></div>
+    </article>
+  `).join('');
+}
+
+function renderWarehouseMap(summary = {}, isOffline = false) {
+  const nodes = [
+    { label: 'Inbound Dock', value: summary.open_purchase_orders || 0, note: 'open POs', tone: 'amber' },
+    { label: 'Storage Lanes', value: summary.total_units || 0, note: 'units on hand', tone: 'blue' },
+    { label: 'Pick Pack', value: summary.open_sales_orders || 0, note: 'open SOs', tone: 'green' },
+    { label: 'Control Desk', value: summary.low_stock_count || 0, note: 'stock alerts', tone: 'red' }
+  ];
+
+  $('#warehouseFlowStatus').textContent = isOffline
+    ? 'Database offline'
+    : `${number.format(summary.total_units || 0)} units tracked`;
+
+  $('#warehouseMap').innerHTML = nodes.map((node) => `
+    <article class="flow-node" data-tone="${escapeHtml(node.tone)}">
+      <div class="flow-label">${escapeHtml(node.label)}</div>
+      <div class="flow-value">${number.format(node.value)}</div>
+      <div class="flow-note">${escapeHtml(node.note)}</div>
+    </article>
+  `).join('');
+}
+
+function renderDashboard(data, isOffline = false) {
+  const summary = data.summary || {};
+  const lowStock = data.lowStock || [];
+  const recentTransactions = data.recentTransactions || [];
+
+  renderSideRail(summary);
+  renderKpis(summary, isOffline);
+  renderOpsStrip(summary, isOffline);
+  renderWarehouseMap(summary, isOffline);
+
+  $('#lowStockCount').textContent = `${lowStock.length} items`;
+  $('#dashboardLowStockRows').innerHTML = lowStock.length
+    ? lowStock.map((item) => `
       <tr>
         <td class="sku">${escapeHtml(item.sku)}</td>
         <td>${escapeHtml(item.product_name)}</td>
@@ -214,8 +285,8 @@ function renderDashboard(data) {
     `).join('')
     : emptyRow(4, 'No low-stock items');
 
-  $('#recentTransactionRows').innerHTML = data.recentTransactions.length
-    ? data.recentTransactions.map((item) => `
+  $('#recentTransactionRows').innerHTML = recentTransactions.length
+    ? recentTransactions.map((item) => `
       <tr>
         <td>${statusBadge(item.transaction_type)}</td>
         <td>${escapeHtml(item.product_name)}</td>
@@ -224,6 +295,31 @@ function renderDashboard(data) {
       </tr>
     `).join('')
     : emptyRow(4, 'No transactions found');
+}
+
+function renderOfflineState() {
+  const summary = {
+    active_products: 0,
+    active_suppliers: 0,
+    total_units: 0,
+    inventory_value: 0,
+    low_stock_count: 0,
+    open_purchase_orders: 0,
+    open_sales_orders: 0
+  };
+
+  state.products = [];
+  state.purchaseOrders = [];
+  state.salesOrders = [];
+  state.lowStock = [];
+  state.transactions = [];
+
+  renderDashboard({ summary, lowStock: [], recentTransactions: [] }, true);
+  renderProducts();
+  renderOrders();
+  renderReports();
+  ensureOneLineItem($('#purchaseItems'), 'purchase');
+  ensureOneLineItem($('#salesItems'), 'sales');
 }
 
 function renderProducts() {
@@ -413,6 +509,7 @@ async function refreshAll() {
     setDbStatus(true, 'Database online');
   } catch (error) {
     setDbStatus(false, 'Database offline');
+    renderOfflineState();
     showToast(error.message, 'error');
   }
 }

@@ -36,6 +36,21 @@
           </button>
         </nav>
 
+        <div class="side-rail" aria-label="Warehouse summary">
+          <div>
+            <span>Inbound</span>
+            <strong id="sideInbound">0</strong>
+          </div>
+          <div>
+            <span>Outbound</span>
+            <strong id="sideOutbound">0</strong>
+          </div>
+          <div>
+            <span>Alerts</span>
+            <strong id="sideAlerts">0</strong>
+          </div>
+        </div>
+
         <div class="db-status" id="dbStatus">
           <span class="status-dot"></span>
           Checking database
@@ -59,6 +74,15 @@
 
         <section class="view is-active" id="dashboardView" data-view="dashboard">
           <div class="kpi-grid" id="kpiGrid"></div>
+          <div class="ops-strip" id="opsStrip"></div>
+
+          <section class="panel warehouse-panel">
+            <div class="panel-header">
+              <h2>Warehouse Flow</h2>
+              <span class="muted" id="warehouseFlowStatus">Awaiting data</span>
+            </div>
+            <div class="warehouse-map" id="warehouseMap"></div>
+          </section>
 
           <div class="content-grid two-column">
             <section class="panel">
@@ -424,4 +448,3 @@
     <script type="module" src="/app.js"></script>
   </body>
 </html>
-
