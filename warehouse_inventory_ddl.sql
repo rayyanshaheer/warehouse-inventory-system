@@ -180,12 +180,12 @@ CREATE TABLE inventory_transactions (
         ON DELETE RESTRICT,
     CONSTRAINT fk_inventory_transactions_purchase_order
         FOREIGN KEY (purchase_order_id) REFERENCES purchase_orders(purchase_order_id)
-        ON UPDATE CASCADE
-        ON DELETE SET NULL,
+        ON UPDATE RESTRICT
+        ON DELETE RESTRICT,
     CONSTRAINT fk_inventory_transactions_sales_order
         FOREIGN KEY (sales_order_id) REFERENCES sales_orders(sales_order_id)
-        ON UPDATE CASCADE
-        ON DELETE SET NULL,
+        ON UPDATE RESTRICT
+        ON DELETE RESTRICT,
     CONSTRAINT fk_inventory_transactions_performed_by
         FOREIGN KEY (performed_by) REFERENCES users(user_id)
         ON UPDATE CASCADE

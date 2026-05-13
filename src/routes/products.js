@@ -57,7 +57,7 @@ productsRouter.get('/products', asyncHandler(async (req, res) => {
     params.push(like, like, like, like);
   }
 
-  sql += ' ORDER BY p.product_name';
+  sql += ' ORDER BY p.is_active DESC, p.product_name';
 
   const products = await query(sql, params);
   res.json({ data: products });
@@ -82,9 +82,10 @@ productsRouter.post('/products', asyncHandler(async (req, res) => {
         primary_supplier_id,
         unit_of_measure,
         unit_price,
-        reorder_level
+        reorder_level,
+        is_active
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `, [
       cleanString(req.body.sku),
       cleanString(req.body.product_name),
@@ -94,7 +95,8 @@ productsRouter.post('/products', asyncHandler(async (req, res) => {
       toDecimal(req.body.unit_price, 'unit_price', { min: 0 }),
       req.body.reorder_level === undefined || req.body.reorder_level === ''
         ? 10
-        : toInt(req.body.reorder_level, 'reorder_level', { min: 0 })
+        : toInt(req.body.reorder_level, 'reorder_level', { min: 0 }),
+      req.body.is_active === false || req.body.is_active === 'false' ? 0 : 1
     ]);
 
     const productId = result.insertId;
@@ -158,5 +160,23 @@ productsRouter.put('/products/:id', asyncHandler(async (req, res) => {
   }
 
   const product = await query(`${productSelect} WHERE p.product_id = ?`, [productId]);
+  res.json({ data: product[0] });
+}));
+
+productsRouter.delete('/products/:id', asyncHandler(async (req, res) => {
+  const productId = toInt(req.params.id, 'product_id', { min: 1 });
+
+  await query(`
+    UPDATE products
+    SET is_active = FALSE
+    WHERE product_id = ?
+  `, [productId]);
+
+  const product = await query(`${productSelect} WHERE p.product_id = ?`, [productId]);
+
+  if (!product[0]) {
+    throw new AppError('Product not found', 404);
+  }
+
   res.json({ data: product[0] });
 }));

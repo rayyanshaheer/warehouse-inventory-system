@@ -41,6 +41,10 @@ button {
   cursor: pointer;
 }
 
+[hidden] {
+  display: none !important;
+}
+
 .app-shell {
   display: grid;
   grid-template-columns: 280px minmax(0, 1fr);
@@ -280,6 +284,20 @@ input:focus {
 
 .button-secondary:hover {
   background: var(--surface-soft);
+}
+
+.button-small {
+  min-height: 32px;
+  padding: 6px 10px;
+  font-size: 0.78rem;
+}
+
+.button-danger {
+  color: var(--danger);
+}
+
+.button-danger:hover {
+  background: #fff0ee;
 }
 
 .view {
@@ -592,6 +610,10 @@ table {
   min-width: 640px;
 }
 
+.product-table {
+  min-width: 940px;
+}
+
 th,
 td {
   padding: 13px 16px;
@@ -662,6 +684,11 @@ tbody tr:hover td {
   background: #f7e0df;
 }
 
+.badge.inactive {
+  color: #6d6255;
+  background: #eee7dc;
+}
+
 .stock-meter {
   display: grid;
   gap: 6px;
@@ -709,6 +736,25 @@ label {
   gap: 12px;
 }
 
+.checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 34px;
+}
+
+input[type="checkbox"] {
+  width: 16px;
+  min-height: 16px;
+  accent-color: var(--brand-2);
+}
+
+.form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
 .line-items {
   display: grid;
   gap: 10px;
@@ -739,6 +785,7 @@ label {
 
 .row-actions {
   display: flex;
+  gap: 8px;
   justify-content: flex-end;
 }
 

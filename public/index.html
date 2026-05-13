@@ -131,7 +131,7 @@
           <div class="content-grid form-table-grid">
             <section class="panel">
               <div class="panel-header">
-                <h2>New Product</h2>
+                <h2 id="productFormTitle">New Product</h2>
               </div>
               <form id="productForm" class="stacked-form">
                 <label>
@@ -172,10 +172,19 @@
                     <input name="opening_stock" type="number" min="0" step="1" value="0">
                   </label>
                 </div>
-                <button class="button" type="submit">
-                  <span class="button-icon">+</span>
-                  Add Product
-                </button>
+                <label class="checkbox-row">
+                  <input name="is_active" type="checkbox" checked>
+                  <span>Active product</span>
+                </label>
+                <div class="form-actions">
+                  <button class="button" type="submit">
+                    <span class="button-icon" id="productSubmitIcon">+</span>
+                    <span id="productSubmitLabel">Add Product</span>
+                  </button>
+                  <button class="button button-secondary" id="cancelProductEditButton" type="button" hidden>
+                    Cancel Edit
+                  </button>
+                </div>
               </form>
             </section>
 
@@ -185,7 +194,7 @@
                 <input class="search-input" id="productSearch" placeholder="Search products">
               </div>
               <div class="table-wrap">
-                <table>
+                <table class="product-table">
                   <thead>
                     <tr>
                       <th>SKU</th>
@@ -194,6 +203,8 @@
                       <th>Supplier</th>
                       <th>Stock</th>
                       <th>Value</th>
+                      <th>Status</th>
+                      <th></th>
                     </tr>
                   </thead>
                   <tbody id="productRows"></tbody>

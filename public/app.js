@@ -9,7 +9,8 @@ const state = {
   purchaseOrders: [],
   salesOrders: [],
   lowStock: [],
-  transactions: []
+  transactions: [],
+  editingProductId: null
 };
 
 const titles = {
@@ -343,6 +344,7 @@ function renderProducts() {
         ? Math.min(100, Math.round((product.quantity_on_hand / product.reorder_level) * 100))
         : 100;
       const isLow = Boolean(product.is_low_stock);
+      const isActive = Boolean(product.is_active);
 
       return `
         <tr>
@@ -357,10 +359,15 @@ function renderProducts() {
             </div>
           </td>
           <td>${currency.format(product.inventory_value || 0)}</td>
+          <td><span class="badge ${isActive ? 'fulfilled' : 'inactive'}">${isActive ? 'Active' : 'Inactive'}</span></td>
+          <td class="row-actions">
+            <button class="button button-secondary button-small" data-edit-product="${product.product_id}" type="button">Edit</button>
+            <button class="button button-secondary button-small button-danger" data-delete-product="${product.product_id}" type="button" ${isActive ? '' : 'disabled'}>Delete</button>
+          </td>
         </tr>
       `;
     }).join('')
-    : emptyRow(6, 'No products found');
+    : emptyRow(8, 'No products found');
 }
 
 function renderOrders() {
@@ -535,6 +542,41 @@ function collectLineItems(container, type) {
   }));
 }
 
+function setProductFormMode(product = null) {
+  const form = $('#productForm');
+  const openingStock = form.elements.opening_stock;
+  const editing = Boolean(product);
+
+  state.editingProductId = editing ? product.product_id : null;
+  $('#productFormTitle').textContent = editing ? 'Edit Product' : 'New Product';
+  $('#productSubmitIcon').textContent = editing ? 'S' : '+';
+  $('#productSubmitLabel').textContent = editing ? 'Save Product' : 'Add Product';
+  $('#cancelProductEditButton').hidden = !editing;
+  openingStock.disabled = editing;
+  openingStock.title = editing ? 'Use Inventory Adjustment to change existing stock.' : '';
+
+  if (!editing) {
+    form.reset();
+    form.elements.unit_of_measure.value = 'pcs';
+    form.elements.reorder_level.value = '10';
+    openingStock.value = '0';
+    form.elements.is_active.checked = true;
+    return;
+  }
+
+  form.elements.sku.value = product.sku || '';
+  form.elements.product_name.value = product.product_name || '';
+  form.elements.category_id.value = product.category_id || '';
+  form.elements.primary_supplier_id.value = product.primary_supplier_id || '';
+  form.elements.unit_of_measure.value = product.unit_of_measure || 'pcs';
+  form.elements.unit_price.value = product.unit_price ?? '';
+  form.elements.reorder_level.value = product.reorder_level ?? 10;
+  openingStock.value = product.quantity_on_hand ?? 0;
+  form.elements.is_active.checked = Boolean(product.is_active);
+  form.scrollIntoView({ block: 'start', behavior: 'smooth' });
+  form.elements.product_name.focus();
+}
+
 function bindNavigation() {
   $all('[data-view-target]').forEach((button) => {
     button.addEventListener('click', (event) => {
@@ -587,15 +629,35 @@ function bindForms() {
     event.preventDefault();
     const form = event.currentTarget;
     handleSubmit(form, async () => {
+      const payload = {
+        ...formToObject(form),
+        is_active: form.elements.is_active.checked
+      };
+
+      if (state.editingProductId) {
+        delete payload.opening_stock;
+        await api(`/products/${state.editingProductId}`, {
+          method: 'PUT',
+          body: JSON.stringify(payload)
+        });
+        showToast('Product updated');
+        setProductFormMode();
+        return;
+      }
+
       await api('/products', {
         method: 'POST',
         body: JSON.stringify({
-          ...formToObject(form),
+          ...payload,
           performed_by: selectedUserId()
         })
       });
       showToast('Product added');
     });
+  });
+
+  $('#cancelProductEditButton').addEventListener('click', () => {
+    setProductFormMode();
   });
 
   $('#adjustmentForm').addEventListener('submit', (event) => {
@@ -628,6 +690,40 @@ function bindForms() {
       const container = row.parentElement;
       row.remove();
       ensureOneLineItem(container, container.id === 'purchaseItems' ? 'purchase' : 'sales');
+      return;
+    }
+
+    const editProductButton = event.target.closest('[data-edit-product]');
+    if (editProductButton) {
+      const productId = editProductButton.dataset.editProduct;
+      const product = state.products.find((item) => String(item.product_id) === productId);
+
+      if (product) {
+        setProductFormMode(product);
+      }
+      return;
+    }
+
+    const deleteProductButton = event.target.closest('[data-delete-product]');
+    if (deleteProductButton) {
+      const productId = deleteProductButton.dataset.deleteProduct;
+      const product = state.products.find((item) => String(item.product_id) === productId);
+      const confirmed = window.confirm(`Delete ${product ? product.sku : 'this product'} from the active catalog? Existing orders and transactions will remain.`);
+
+      if (!confirmed) {
+        return;
+      }
+
+      try {
+        await api(`/products/${productId}`, { method: 'DELETE' });
+        if (String(state.editingProductId) === productId) {
+          setProductFormMode();
+        }
+        showToast('Product deleted from active catalog');
+        await refreshAll();
+      } catch (error) {
+        showToast(error.message, 'error');
+      }
       return;
     }
 
